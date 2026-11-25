@@ -23,6 +23,8 @@ enum MouseProtocol {
         static let service = CBUUID(string: "7A1C0001-5B2E-4E8F-9C3D-2F6A8B1E4D70")
         static let input = CBUUID(string: "7A1C0002-5B2E-4E8F-9C3D-2F6A8B1E4D70")
         static let info = CBUUID(string: "7A1C0003-5B2E-4E8F-9C3D-2F6A8B1E4D70")
+        /// The agent writes here every second; the phone treats silence as a dead link.
+        static let ping = CBUUID(string: "7A1C0004-5B2E-4E8F-9C3D-2F6A8B1E4D70")
     }
 
     /// iPhone as central, ESP32 dongle as peripheral.
@@ -74,6 +76,8 @@ struct MousePacket: Equatable {
 protocol MouseTransport: AnyObject {
     /// Called when a previously refused send can be retried.
     var onReadyToSend: (() -> Void)? { get set }
+    /// Called when the link to the host drops, so queued packets and held buttons are discarded.
+    var onLinkReset: (() -> Void)? { get set }
     var isLinkUp: Bool { get }
     /// Returns false when the link is busy; the caller keeps the packet and retries on `onReadyToSend`.
     func send(_ data: Data) -> Bool

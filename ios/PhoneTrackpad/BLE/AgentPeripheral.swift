@@ -5,6 +5,12 @@ import UIKit
 
 /// Windows-agent mode: the iPhone advertises a custom GATT service and the
 /// PhoneTrackpad agent on the PC connects to it and subscribes to mouse packets.
+///
+/// A subscription alone does not prove the agent is still listening: Windows can
+/// keep a link (and its subscription) open after the agent gave up on it. So the
+/// agent writes to the ping characteristic every second, the phone only reports
+/// "connected" while pings arrive, and it never stops advertising, so a
+/// restarted agent can always find it again.
 @Observable
 final class AgentPeripheral: NSObject, MouseTransport {
     enum State: Equatable {
@@ -17,10 +23,16 @@ final class AgentPeripheral: NSObject, MouseTransport {
     private(set) var state: State = .off
 
     @ObservationIgnored var onReadyToSend: (() -> Void)?
+    @ObservationIgnored var onLinkReset: (() -> Void)?
     @ObservationIgnored private var manager: CBPeripheralManager?
     @ObservationIgnored private var inputCharacteristic: CBMutableCharacteristic?
     @ObservationIgnored private var subscriber: CBCentral?
+    @ObservationIgnored private var lastPing = Date.distantPast
+    @ObservationIgnored private var watchdog: Timer?
     @ObservationIgnored private var wantsRunning = false
+
+    /// No ping for this long means the agent is gone, whatever the link layer says.
+    private static let staleAfter: TimeInterval = 4
 
     var isLinkUp: Bool { state == .connected }
 
@@ -44,6 +56,8 @@ final class AgentPeripheral: NSObject, MouseTransport {
 
     func stop() {
         wantsRunning = false
+        watchdog?.invalidate()
+        watchdog = nil
         manager?.stopAdvertising()
         manager?.removeAllServices()
         inputCharacteristic = nil
@@ -67,10 +81,15 @@ final class AgentPeripheral: NSObject, MouseTransport {
                                            properties: [.read],
                                            value: try? JSONSerialization.data(withJSONObject: infoJSON),
                                            permissions: [.readable])
+        let ping = CBMutableCharacteristic(type: MouseProtocol.Agent.ping,
+                                           properties: [.write],
+                                           value: nil,
+                                           permissions: [.writeable])
         let service = CBMutableService(type: MouseProtocol.Agent.service, primary: true)
-        service.characteristics = [input, info]
+        service.characteristics = [input, info, ping]
         inputCharacteristic = input
         manager.add(service)
+        startWatchdog()
     }
 
     private func advertise() {
@@ -79,6 +98,23 @@ final class AgentPeripheral: NSObject, MouseTransport {
             CBAdvertisementDataServiceUUIDsKey: [MouseProtocol.Agent.service],
             CBAdvertisementDataLocalNameKey: "PhoneTrackpad",
         ])
+    }
+
+    private func startWatchdog() {
+        watchdog?.invalidate()
+        watchdog = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self, self.subscriber != nil,
+                  Date().timeIntervalSince(self.lastPing) > Self.staleAfter else { return }
+            self.dropLink()
+        }
+    }
+
+    private func dropLink() {
+        guard subscriber != nil else { return }
+        subscriber = nil
+        state = .advertising
+        onLinkReset?()
+        advertise()
     }
 }
 
@@ -92,6 +128,7 @@ extension AgentPeripheral: CBPeripheralManagerDelegate {
             state = .unavailable("Bluetooth is off")
             inputCharacteristic = nil
             subscriber = nil
+            onLinkReset?()
         case .unauthorized:
             state = .unavailable("Bluetooth permission denied — enable it in Settings")
         case .unsupported:
@@ -120,18 +157,26 @@ extension AgentPeripheral: CBPeripheralManagerDelegate {
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral,
                            didSubscribeTo characteristic: CBCharacteristic) {
         guard characteristic.uuid == MouseProtocol.Agent.input else { return }
+        // A newer subscriber wins: it is the agent that is actually listening now.
+        if subscriber != nil, subscriber != central { onLinkReset?() }
         subscriber = central
+        lastPing = Date() // grace period until the first ping arrives
         peripheral.setDesiredConnectionLatency(.low, for: central)
-        peripheral.stopAdvertising()
         state = .connected
     }
 
     func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral,
                            didUnsubscribeFrom characteristic: CBCharacteristic) {
         guard characteristic.uuid == MouseProtocol.Agent.input, central == subscriber else { return }
-        subscriber = nil
-        state = .advertising
-        advertise()
+        dropLink()
+    }
+
+    func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
+        guard let first = requests.first else { return }
+        for request in requests where request.characteristic.uuid == MouseProtocol.Agent.ping {
+            if request.central == subscriber { lastPing = Date() }
+        }
+        peripheral.respond(to: first, withResult: .success)
     }
 
     func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {

@@ -25,10 +25,10 @@ static class Program
             return 1;
         }
 
-        Console.WriteLine("PhoneTrackpad Agent — Ctrl+C to quit, --reset to forget approved phones.");
+        Console.WriteLine("PhoneTrackpad Agent — Ctrl+C to quit, --reset to forget approved phones, --verbose for packet stats.");
         Console.WriteLine($"Approved phones: {approvals.FilePath}");
 
-        var link = new BleLink(new MouseInjector(), approvals, AskUser);
+        var link = new BleLink(new MouseInjector(), approvals, AskUser, verbose: args.Contains("--verbose"));
         var quit = new TaskCompletionSource();
         Console.CancelKeyPress += (_, e) => { e.Cancel = true; quit.TrySetResult(); };
 

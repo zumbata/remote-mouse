@@ -56,6 +56,8 @@ Open the app on the iPhone in **Windows agent** mode. The agent finds the phone 
 The first time, it asks in the console `"iPhone" wants to control this mouse. Allow? [y/N]`.
 Approved phones live in `%APPDATA%\PhoneTrackpad\approved.json`; `PhoneTrackpadAgent --reset` forgets them.
 
+The agent pings the phone every second. The phone shows *Connected* only while pings arrive and keeps advertising, so a restarted agent always finds it again; after 3 missed pings the agent drops the link and scans. `--verbose` prints packet counts every 5 s, useful when the pointer does not move.
+
 To control elevated windows (Task Manager, installers), run the agent as administrator.
 
 ## 2b. ESP32 dongle (`firmware/`)
@@ -97,6 +99,7 @@ dx −300, dy 5, wheel −3, hwheel 2 → `01 05 d4 fe 05 00 fd 02`.
 | service | `7A1C0001-5B2E-4E8F-9C3D-2F6A8B1E4D70` | `7A1C0101-…` |
 | input | `…0002`, notify | `…0102`, write without response, encrypted + authenticated |
 | info | `…0003`, read: `{"id","name"}` | `…0103`, read, encrypted + authenticated (triggers PIN pairing) |
+| ping | `…0004`, write with response: the agent writes 1 byte every second | n/a |
 
 ## Security notes
 

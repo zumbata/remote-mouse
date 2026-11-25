@@ -26,6 +26,7 @@ final class DongleCentral: NSObject, MouseTransport {
     private(set) var found: [Found] = []
 
     @ObservationIgnored var onReadyToSend: (() -> Void)?
+    @ObservationIgnored var onLinkReset: (() -> Void)?
     @ObservationIgnored private var central: CBCentralManager?
     @ObservationIgnored private var peripherals: [UUID: CBPeripheral] = [:]
     @ObservationIgnored private var active: CBPeripheral?
@@ -155,6 +156,7 @@ extension DongleCentral: CBCentralManagerDelegate {
         guard peripheral == active else { return }
         active = nil
         input = nil
+        onLinkReset?()
         if case .failed = state {} else { state = .scanning }
         // A pending connect never times out on iOS, so the dongle reconnects as soon as it is back in range.
         resume()

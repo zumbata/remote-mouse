@@ -11,6 +11,8 @@
     <AssemblyName>PhoneTrackpadAgent</AssemblyName>
     <!-- Lets the project build (not run) on macOS/Linux too. -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <ApplicationIcon>AppIcon.ico</ApplicationIcon>
+    <Version>0.2.0</Version>
   </PropertyGroup>
 
 </Project>

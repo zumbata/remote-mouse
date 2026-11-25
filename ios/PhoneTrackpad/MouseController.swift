@@ -32,6 +32,10 @@ final class MouseController {
         didSet {
             pending.removeAll()
             transport?.onReadyToSend = { [weak self] in self?.flush() }
+            transport?.onLinkReset = { [weak self] in
+                self?.pending.removeAll()
+                self?.buttons = []
+            }
         }
     }
 
