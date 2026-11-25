@@ -41,7 +41,7 @@ The screen stays awake while the app is open. The link drops when the app goes t
 
 Requires Windows 10 2004+ (x64) with Bluetooth LE.
 
-**Prebuilt:** copy `dist/win-x64/PhoneTrackpadAgent.exe` to the PC and run it. It is self-contained, so the PC needs no .NET install.
+**Prebuilt:** download `PhoneTrackpadAgent.exe` from [Releases](https://github.com/zumbata/remote-mouse/releases/latest) and run it. It is self-contained, so the PC needs no .NET install.
 
 **From source** (needs the [.NET 10 SDK](https://dotnet.microsoft.com/download)):
 
@@ -116,3 +116,7 @@ dx −300, dy 5, wheel −3, hwheel 2 → `01 05 d4 fe 05 00 fd 02`.
 | Packet format | Swift encoder tested against the byte layout above |
 | ESP32 firmware | written against NimBLE-Arduino 2.5.2 headers, **not compiled yet** |
 | Real hardware | **not tested yet**: needs an iPhone, a Windows PC and an ESP32 |
+
+## License
+
+[MIT](LICENSE)
