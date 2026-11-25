@@ -1,0 +1,12 @@
+.DS_Store
+# Xcode
+xcuserdata/
+DerivedData/
+build/
+# .NET
+windows-agent/bin/
+windows-agent/obj/
+# PlatformIO
+firmware/.pio/
+# Build output
+dist/
