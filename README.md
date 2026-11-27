@@ -71,12 +71,24 @@ Requires [PlatformIO](https://platformio.org/install/cli) (CLI or the VS Code ex
    pio run -e ble-mouse -t upload   # any ESP32: PC pairs with it as a Bluetooth mouse
    pio run -e usb-mouse -t upload   # ESP32-S3: plug the native USB port into the PC
    ```
+   `usb-mouse` targets 4 MB flash boards such as the ESP32-S3-Zero. On an 8 MB
+   board you can drop `board_upload.flash_size` and `board_build.partitions` from
+   `platformio.ini`.
 3. `ble-mouse` only: on the PC open **Settings → Bluetooth → Add device**, pick
    *PhoneTrackpad Dongle* and type the PIN.
-4. On the iPhone switch to **ESP32 dongle** mode, tap the dongle, type the PIN once.
-   The app remembers it and reconnects on its own.
+4. On the iPhone open the PhoneTrackpad app, switch to **ESP32 dongle** mode, tap the
+   dongle and type the PIN once. The app remembers it and reconnects on its own.
+   The dongle does **not** show up in the iPhone's Settings → Bluetooth: iOS lists
+   only devices it knows how to use, and the dongle speaks a custom BLE service that
+   only the app understands. Pair from the app.
 
-`pio device monitor` shows connections and pairing on the serial console.
+`pio device monitor` shows connections and pairing on the serial console (`ble-mouse`
+only: `usb-mouse` turns the USB port into a mouse, so it has no serial console).
+
+**Re-flashing a `usb-mouse` board.** Once flashed, the board shows up as a USB mouse
+and its serial port (`/dev/cu.usbmodem…`, `COMx`) is gone, so `upload` can't find it.
+Put it in download mode first: hold **BOOT**, press and release **RESET** (or plug the
+cable in while holding BOOT), release BOOT, then run the upload again.
 
 ## Protocol
 
@@ -117,8 +129,8 @@ dx −300, dy 5, wheel −3, hwheel 2 → `01 05 d4 fe 05 00 fd 02`.
 | iOS app | builds for device with Xcode 26.5 (unsigned), no warnings |
 | Windows agent | builds clean on .NET 10 SDK 10.0.404; self-contained `dist/win-x64/PhoneTrackpadAgent.exe` published (PE32+ x64) |
 | Packet format | Swift encoder tested against the byte layout above |
-| ESP32 firmware | written against NimBLE-Arduino 2.5.2 headers, **not compiled yet** |
-| Real hardware | **not tested yet**: needs an iPhone, a Windows PC and an ESP32 |
+| ESP32 firmware | `usb-mouse` builds clean (Arduino-ESP32 3.3.12, NimBLE-Arduino 2.5.2); `ble-mouse` **not compiled yet** |
+| Real hardware | `usb-mouse` on an ESP32-S3-Zero, plugged into a Mac: iPhone pairs from the app with the PIN and the pointer works. Agent mode on a Windows PC and `ble-mouse` **not tested yet** |
 
 ## License
 
